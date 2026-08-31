@@ -1,0 +1,26 @@
+<svg width="780" height="220" viewBox="0 0 780 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">NJSIF Scholarship Fund logo</title>
+  <desc id="desc">NJSIF logo with a premium icon and wordmark for the scholarship NGO.</desc>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="184" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F1B36"/>
+      <stop offset="0.5" stop-color="#10254C"/>
+      <stop offset="1" stop-color="#26124E"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="46" y1="48" x2="156" y2="156" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset="0.55" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="14" y="14" width="176" height="176" rx="46" fill="url(#bg)"/>
+  <path d="M102 44L108 59L124 61L112 72L115 88L102 81L89 88L92 72L80 61L96 59L102 44Z" fill="url(#accent)"/>
+  <path d="M70 84C58 94 50 108 48 125C46 143 54 158 70 171C91 166 105 149 110 128C99 124 90 118 82 110C77 105 73 97 70 84Z" fill="url(#accent)" fill-opacity="0.88"/>
+  <path d="M134 84C146 94 154 108 156 125C158 143 150 158 134 171C113 166 99 149 94 128C105 124 114 118 122 110C127 105 131 97 134 84Z" fill="url(#accent)" fill-opacity="0.88"/>
+  <path d="M62 146C81 130 95 124 110 124C125 124 139 130 158 146V160C139 149 125 144 110 144C95 144 81 149 62 160V146Z" fill="#EEF6FF"/>
+
+  <text x="228" y="88" fill="#F8FBFF" font-size="52" font-weight="700" font-family="Segoe UI, Arial, sans-serif">NJSIF</text>
+  <text x="228" y="126" fill="#8FE7FF" font-size="22" font-weight="700" letter-spacing="4" font-family="Segoe UI, Arial, sans-serif">SCHOLARSHIP FUND</text>
+  <text x="228" y="168" fill="#CBD9F2" font-size="22" font-weight="400" font-family="Segoe UI, Arial, sans-serif">Education • Opportunity • Community</text>
+</svg>

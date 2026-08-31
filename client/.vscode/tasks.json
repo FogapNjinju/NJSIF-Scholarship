@@ -1,0 +1,130 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "verify-client-build",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-admin-backend-tools",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const router=require('../server/routes/applicationRoutes'); const paths=router.stack.filter(x=>x.route).map(x=>x.route.path); console.log(JSON.stringify(paths, null, 2)); if (!paths.includes('/bulk-update')) { process.exit(1); } console.log('bulk update route verified');"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-admin-backend-tools-2",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const router=require(\"../server/routes/applicationRoutes\"); const paths=router.stack.filter(x=>x.route).map(x=>x.route.path); console.log(JSON.stringify(paths, null, 2)); if (!paths.includes(\"/bulk-update\")) { process.exit(1); } console.log(\"bulk update route verified\");"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-admin-backend-routes",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d C:\\Users\\User\\Desktop\\njsif-platform\\client && node -e \"const router=require('../server/routes/applicationRoutes'); const paths=router.stack.filter(x=>x.route).map(x=>x.route.path); console.log(JSON.stringify(paths,null,2)); if(!paths.includes('/bulk-update')) process.exit(1); console.log('bulk update route verified');\""
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-server-route-load",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"..\\server\\routes\\applicationRoutes.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-admin-build",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-archive-route-load",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"..\\server\\routes\\applicationRoutes.js"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "verify-archive-build",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-archive-404-fix",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-invalid-status-fix",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-premium-design-build",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "verify-logo-branding-build",
+			"type": "shell",
+			"command": "npm.cmd",
+			"args": [
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"group": "build"
+		}
+	]
+}

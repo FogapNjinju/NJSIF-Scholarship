@@ -1,0 +1,20 @@
+[
+  {
+    "_id": "seed-1",
+    "name": "Amina N.",
+    "location": "Bamenda",
+    "program": "Undergraduate",
+    "quote": "This scholarship reduced financial pressure and helped me stay focused on my studies and leadership work.",
+    "outcome": "Improved grades and confidence",
+    "createdAt": "2026-04-10T10:00:00.000Z"
+  },
+  {
+    "_id": "seed-2",
+    "name": "Joel T.",
+    "location": "Buea",
+    "program": "Secondary School",
+    "quote": "The support gave me access to learning materials and encouragement when I needed it most.",
+    "outcome": "Better academic performance",
+    "createdAt": "2026-04-10T11:00:00.000Z"
+  }
+]
