@@ -7,9 +7,26 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Origin is not allowed by CORS"));
+  },
+}));
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
 const mongoUri = process.env.MONGO_URI;
 if (!mongoUri) {
@@ -29,4 +46,5 @@ app.use("/api/applications", require("./routes/applicationRoutes"));
 app.use("/api/testimonials", require("./routes/testimonialRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
-app.listen(5000, () => console.log("Server running"));
+const port = Number(process.env.PORT) || 5000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
