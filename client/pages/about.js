@@ -107,7 +107,7 @@ export default function About() {
 
             <div className="mt-12 overflow-hidden rounded-4xl border border-white/10 bg-slate-900/70 shadow-xl shadow-slate-950/20">
               <img
-                src="/images/community-support.svg"
+                src="/images/community-support.jpeg"
                 alt="Community and student support illustration"
                 className="h-full w-full object-cover"
               />
