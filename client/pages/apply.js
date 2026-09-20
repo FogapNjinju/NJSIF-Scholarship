@@ -12,8 +12,14 @@ const initialForm = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-const APPLICATION_DEADLINE = new Date("2026-06-30T23:59:59");
+const APPLICATION_YEAR = new Date().getFullYear();
+const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
 const SUPPORT_EMAIL = "info@njsif.org";
+const APPLICATION_DEADLINE_LABEL = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+}).format(APPLICATION_DEADLINE);
 const steps = [
   "Personal info",
   "Education details",
@@ -47,9 +53,6 @@ export default function Apply() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [step, setStep] = useState(0);
-
-  const timeLeft = APPLICATION_DEADLINE.getTime() - Date.now();
-  const daysLeft = Math.max(0, Math.ceil(timeLeft / (1000 * 60 * 60 * 24)));
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -147,8 +150,8 @@ export default function Apply() {
               <div className="surface-panel mt-10 space-y-6">
                 <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-4">
                   <p className="text-sm uppercase tracking-[0.28em] text-amber-200">Application deadline</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">30 June 2026</p>
-                  <p className="mt-2 text-sm text-slate-300">About <span className="font-semibold text-white">{daysLeft} days left</span> to submit your application.</p>
+                  <p className="mt-2 text-2xl font-semibold text-white">{APPLICATION_DEADLINE_LABEL}</p>
+                  <p className="mt-2 text-sm text-slate-300">Applications close on this date for the current cycle.</p>
                 </div>
 
                 <div>
