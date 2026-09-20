@@ -15,7 +15,18 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const getDefaultApiUrl = () => {
+  if (typeof window === "undefined") {
+    return "http://localhost:5000";
+  }
+
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1"
+    ? "http://localhost:5000"
+    : window.location.origin;
+};
+
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || getDefaultApiUrl()).replace(/\/$/, "");
 const SESSION_KEY = "njsif-admin-session";
 
 const statusStyles = {

@@ -11,7 +11,18 @@ const initialForm = {
   goals: "",
 };
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const getDefaultApiUrl = () => {
+  if (typeof window === "undefined") {
+    return "http://localhost:5000";
+  }
+
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1"
+    ? "http://localhost:5000"
+    : window.location.origin;
+};
+
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || getDefaultApiUrl()).replace(/\/$/, "");
 const APPLICATION_URL = `${API_URL}/api/applications`;
 const APPLICATION_YEAR = new Date().getFullYear();
 const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
