@@ -11,7 +11,8 @@ const initialForm = {
   goals: "",
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const APPLICATION_URL = `${API_URL}/api/applications`;
 const APPLICATION_YEAR = new Date().getFullYear();
 const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
 const SUPPORT_EMAIL = "info@njsif.org";
@@ -111,7 +112,7 @@ export default function Apply() {
       if (documents.attestation) formData.append("attestation", documents.attestation);
       if (documents.idCard) formData.append("idCard", documents.idCard);
 
-      const response = await axios.post(`${API_URL}/api/applications`, formData, {
+      const response = await axios.post(APPLICATION_URL, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

@@ -1,16 +1,33 @@
-export default function handler(req, res) {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { name, email, education, program, goals } = req.body || {};
+  try {
+    const formData = await req.formData();
+    const backendUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
-  if (!name || !email || !goals) {
-    return res.status(400).json({ error: "Name, email, and goals are required." });
+    const upstreamResponse = await fetch(`${backendUrl}/api/applications`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const payload = await upstreamResponse.json().catch(() => ({}));
+
+    if (!upstreamResponse.ok) {
+      return res.status(upstreamResponse.status).json(payload);
+    }
+
+    return res.status(upstreamResponse.status).json(payload);
+  } catch (error) {
+    console.error("Application proxy failed:", error);
+    return res.status(502).json({ error: "The application service is unavailable. Please try again later." });
   }
-
-  console.log("Received scholarship application:", { name, email, education, program, goals });
-
-  return res.status(201).json({ success: true, message: "Application received." });
 }

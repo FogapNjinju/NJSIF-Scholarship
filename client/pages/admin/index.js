@@ -1,7 +1,7 @@
 import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
   const [decisionReasonDraft, setDecisionReasonDraft] = useState("");
   const [scoreDraft, setScoreDraft] = useState(0);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
       const applicationsRes = await axios.get(`${API_URL}/api/applications`);
@@ -367,7 +367,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -377,8 +377,12 @@ export default function AdminDashboard() {
       return;
     }
 
-    fetchDashboard();
-  }, [router]);
+    const timeoutId = setTimeout(() => {
+      void fetchDashboard();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchDashboard, router]);
 
   const rankedApplications = useMemo(() => {
     const visibleApplications = applications.filter((application) => application.status !== "deleted");

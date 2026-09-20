@@ -7,10 +7,20 @@ require("dotenv").config();
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:3000")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const defaultOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+];
+
+const allowedOrigins = [...new Set([
+  ...defaultOrigins,
+  ...(process.env.CLIENT_ORIGIN || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+])];
 
 app.use(cors({
   origin(origin, callback) {

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
@@ -18,7 +18,7 @@ export default function TestimonialsPage() {
   const [error, setError] = useState("");
   const [loadingList, setLoadingList] = useState(true);
 
-  const loadTestimonials = async () => {
+  const loadTestimonials = useCallback(async () => {
     try {
       setLoadingList(true);
       const response = await axios.get("/api/testimonials");
@@ -29,11 +29,15 @@ export default function TestimonialsPage() {
     } finally {
       setLoadingList(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadTestimonials();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      void loadTestimonials();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadTestimonials]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
