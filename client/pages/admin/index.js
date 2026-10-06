@@ -15,18 +15,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const getDefaultApiUrl = () => {
-  if (typeof window === "undefined") {
-    return "http://localhost:5000";
-  }
-
-  const hostname = window.location.hostname;
-  return hostname === "localhost" || hostname === "127.0.0.1"
-    ? "http://localhost:5000"
-    : window.location.origin;
-};
-
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || getDefaultApiUrl()).replace(/\/$/, "");
 const SESSION_KEY = "njsif-admin-session";
 
 const statusStyles = {
@@ -54,8 +42,8 @@ const documentLabels = {
 };
 
 const getDocumentEntries = (documents = {}) => Object.entries(documents || {}).filter(([, value]) => value);
-const getDocumentViewUrl = (filename) => `${API_URL}/api/applications/documents/${encodeURIComponent(filename)}/view`;
-const getDocumentDownloadUrl = (filename) => `${API_URL}/api/applications/documents/${encodeURIComponent(filename)}/download`;
+const getDocumentViewUrl = (filename) => `/api/backend/applications/documents/${encodeURIComponent(filename)}/view`;
+const getDocumentDownloadUrl = (filename) => `/api/backend/applications/documents/${encodeURIComponent(filename)}/download`;
 const getScoreValue = (value) => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return 0;
@@ -363,7 +351,7 @@ export default function AdminDashboard() {
   const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
-      const applicationsRes = await axios.get(`${API_URL}/api/applications`);
+      const applicationsRes = await axios.get("/api/backend/applications");
       const list = (applicationsRes.data || []).map(normalizeApplication);
 
       setApplications(list);
@@ -457,7 +445,7 @@ export default function AdminDashboard() {
 
   const updateStatus = async (id, status) => {
     try {
-      const response = await axios.put(`${API_URL}/api/applications/${id}`, {
+      const response = await axios.put(`/api/backend/applications/${id}`, {
         status,
         score: selectedApplication?._id === id ? getScoreValue(scoreDraft) : undefined,
         reviewed: selectedApplication?._id === id ? reviewedDraft : undefined,
@@ -507,13 +495,13 @@ export default function AdminDashboard() {
       let response;
 
       try {
-        response = await axios.patch(`${API_URL}/api/applications/${id}/archive`, archivePayload);
+        response = await axios.patch(`/api/backend/applications/${id}/archive`, archivePayload);
       } catch (err) {
         if (![404, 405].includes(err?.response?.status || 0)) {
           throw err;
         }
 
-        response = await axios.put(`${API_URL}/api/applications/${id}`, {
+        response = await axios.put(`/api/backend/applications/${id}`, {
           reviewed: archivePayload.reviewed,
           reviewNote: buildArchiveText(archivePayload.reviewNote, "Archived from admin dashboard"),
           decisionReason: buildArchiveText(archivePayload.decisionReason, "Archived by admin"),
@@ -548,7 +536,7 @@ export default function AdminDashboard() {
       let response;
 
       try {
-        response = await axios.patch(`${API_URL}/api/applications/${id}/restore`, {
+        response = await axios.patch(`/api/backend/applications/${id}/restore`, {
           status: "pending",
         });
       } catch (err) {
@@ -556,7 +544,7 @@ export default function AdminDashboard() {
           throw err;
         }
 
-        response = await axios.put(`${API_URL}/api/applications/${id}`, {
+        response = await axios.put(`/api/backend/applications/${id}`, {
           status: "pending",
           reviewNote: stripArchiveMarker(selectedApplication?._id === id ? reviewNoteDraft : selectedApplication?.reviewNote || ""),
           decisionReason: stripArchiveMarker(selectedApplication?._id === id ? decisionReasonDraft : selectedApplication?.decisionReason || ""),
@@ -591,7 +579,7 @@ export default function AdminDashboard() {
     if (!selectedApplication?._id) return;
 
     try {
-      const response = await axios.put(`${API_URL}/api/applications/${selectedApplication._id}`, {
+      const response = await axios.put(`/api/backend/applications/${selectedApplication._id}`, {
         score: getScoreValue(scoreDraft),
         reviewed: reviewedDraft,
         reviewNote:
@@ -637,7 +625,7 @@ export default function AdminDashboard() {
       let response;
 
       try {
-        response = await axios.put(`${API_URL}/api/applications/bulk-update`, {
+        response = await axios.put("/api/backend/applications/bulk-update", {
           ids: selectedIds,
           status,
           reviewed: status !== "pending",
@@ -652,7 +640,7 @@ export default function AdminDashboard() {
 
         await Promise.all(
           selectedApplications.map((application) =>
-            axios.put(`${API_URL}/api/applications/${application._id}`, {
+            axios.put(`/api/backend/applications/${application._id}`, {
               ...(status !== "archived" ? { status } : {}),
               reviewed: status !== "pending",
               reviewNote:

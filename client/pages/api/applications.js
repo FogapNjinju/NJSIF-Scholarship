@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const backendUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
+    const backendUrl = (process.env.API_URL || "http://localhost:5000").replace(/\/$/, "");
     const headers = {};
 
     if (req.headers["content-type"]) {
