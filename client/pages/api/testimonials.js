@@ -1,51 +1,23 @@
-import fs from "fs/promises";
-import path from "path";
-
-const filePath = path.join(process.cwd(), "data", "testimonials.json");
-
-async function readTestimonials() {
-  try {
-    const content = await fs.readFile(filePath, "utf8");
-    return JSON.parse(content || "[]");
-  } catch {
-    return [];
-  }
-}
-
-async function writeTestimonials(items) {
-  await fs.writeFile(filePath, JSON.stringify(items, null, 2), "utf8");
-}
+const backendUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
 export default async function handler(req, res) {
-  if (req.method === "GET") {
-    const items = await readTestimonials();
-    return res.status(200).json(items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+  if (!['GET', 'POST'].includes(req.method)) {
+    res.setHeader("Allow", ["GET", "POST"]);
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (req.method === "POST") {
-    const { name, location, program, quote, outcome } = req.body || {};
-
-    if (!name || !quote) {
-      return res.status(400).json({ error: "Name and testimonial message are required." });
-    }
-
-    const items = await readTestimonials();
-    const newItem = {
-      _id: `${Date.now()}`,
-      name,
-      location: location || "",
-      program: program || "",
-      quote,
-      outcome: outcome || "",
-      createdAt: new Date().toISOString(),
-    };
-
-    items.unshift(newItem);
-    await writeTestimonials(items);
-
-    return res.status(201).json(newItem);
+  try {
+    const upstreamResponse = await fetch(`${backendUrl}/api/testimonials`, {
+      method: req.method,
+      ...(req.method === "POST" ? {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body || {}),
+      } : {}),
+    });
+    const payload = await upstreamResponse.json().catch(() => ({}));
+    return res.status(upstreamResponse.status).json(payload);
+  } catch (error) {
+    console.error("Testimonial proxy failed:", error);
+    return res.status(502).json({ error: "The testimonial service is unavailable. Please try again later." });
   }
-
-  res.setHeader("Allow", ["GET", "POST"]);
-  return res.status(405).json({ error: "Method not allowed" });
 }
