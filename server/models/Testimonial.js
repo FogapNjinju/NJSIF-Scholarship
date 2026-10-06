@@ -1,12 +1,25 @@
-const mongoose = require("mongoose");
+const { createCsvStore } = require("./csvStore");
 
-const TestimonialSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  location: String,
-  program: String,
-  quote: { type: String, required: true },
-  outcome: String,
-  createdAt: { type: Date, default: Date.now },
-});
+const store = createCsvStore();
 
-module.exports = mongoose.model("Testimonial", TestimonialSchema);
+class Testimonial {
+  constructor(data = {}) {
+    Object.assign(this, data);
+  }
+
+  static find() {
+    return store.listTestimonials();
+  }
+
+  static async create(data) {
+    return store.createTestimonial(data);
+  }
+
+  async save() {
+    const saved = await store.createTestimonial(this);
+    Object.assign(this, saved);
+    return saved;
+  }
+}
+
+module.exports = Testimonial;
