@@ -1,6 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { dataDir: defaultDataDir } = require("./storagePaths");
 
 const APPLICATION_FIELDS = [
   "_id",
@@ -119,7 +120,7 @@ const parseJson = (value, fallback = null) => {
   }
 };
 
-const createCsvStore = ({ dataDir = path.join(__dirname, "../data") } = {}) => {
+const createCsvStore = ({ dataDir = defaultDataDir } = {}) => {
   const applicationFile = path.join(dataDir, "applications.csv");
   const testimonialFile = path.join(dataDir, "testimonials.csv");
   let operationQueue = Promise.resolve();

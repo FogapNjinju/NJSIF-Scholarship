@@ -3,10 +3,11 @@ const fs = require("fs");
 const multer = require("multer");
 const path = require("path");
 const Application = require("../models/Application");
+const { uploadsDir } = require("../models/storagePaths");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../uploads"));
+    fs.mkdir(uploadsDir, { recursive: true }, (error) => cb(error, uploadsDir));
   },
   filename: (req, file, cb) => {
     const suffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -185,7 +186,7 @@ router.get("/", async (req, res) => {
 router.get("/documents/:filename/view", async (req, res) => {
   try {
     const safeFilename = path.basename(req.params.filename);
-    const filePath = path.join(__dirname, "../uploads", safeFilename);
+    const filePath = path.join(uploadsDir, safeFilename);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: "Document not found" });
@@ -201,7 +202,7 @@ router.get("/documents/:filename/view", async (req, res) => {
 router.get("/documents/:filename/download", async (req, res) => {
   try {
     const safeFilename = path.basename(req.params.filename);
-    const filePath = path.join(__dirname, "../uploads", safeFilename);
+    const filePath = path.join(uploadsDir, safeFilename);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: "Document not found" });
@@ -321,7 +322,7 @@ const removeApplication = async (req, res) => {
     Object.values(application.documents || {}).forEach((filename) => {
       if (!filename) return;
 
-      const filePath = path.join(__dirname, "../uploads", filename);
+      const filePath = path.join(uploadsDir, filename);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }

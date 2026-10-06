@@ -22,6 +22,9 @@ test("application records can be created, read, updated, and deleted using CSV",
   assert.equal(created.status, "pending");
   assert.equal(created.documents.transcript, "transcript.pdf");
 
+  const reopenedStore = createCsvStore({ dataDir });
+  assert.equal((await reopenedStore.getApplicationById(created._id)).name, "Ama Boateng");
+
   const listed = await store.listApplications();
   assert.equal(listed.length, 1);
   assert.equal(listed[0].name, "Ama Boateng");
