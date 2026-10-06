@@ -11,12 +11,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const formData = await req.formData();
     const backendUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
+    const headers = {};
+
+    if (req.headers["content-type"]) {
+      headers["content-type"] = req.headers["content-type"];
+    }
+    if (req.headers["content-length"]) {
+      headers["content-length"] = req.headers["content-length"];
+    }
 
     const upstreamResponse = await fetch(`${backendUrl}/api/applications`, {
       method: "POST",
-      body: formData,
+      headers,
+      body: req,
+      duplex: "half",
     });
 
     const payload = await upstreamResponse.json().catch(() => ({}));
