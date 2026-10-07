@@ -531,6 +531,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const deleteApplication = async (application) => {
+    const applicantName = application.name || "this applicant";
+    const confirmed = window.confirm(
+      `Permanently delete ${applicantName}'s application and uploaded documents? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`/api/backend/applications/${encodeURIComponent(application._id)}`);
+      setSelectedIds((current) => current.filter((id) => id !== application._id));
+      if (selectedApplication?._id === application._id) {
+        setSelectedApplication(null);
+      }
+      setMessage("Application and uploaded documents permanently deleted.");
+      await fetchDashboard();
+    } catch (err) {
+      setError(err?.response?.data?.error || err.message || "Unable to delete application.");
+    }
+  };
+
   const restoreApplication = async (id) => {
     try {
       let response;
@@ -1125,6 +1145,12 @@ export default function AdminDashboard() {
                               Archive
                             </button>
                           )}
+                          <button
+                            onClick={() => deleteApplication(application)}
+                            className="btn-danger !min-h-10 !px-4 !py-2 !text-xs !text-white"
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
 
