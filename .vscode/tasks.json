@@ -1,0 +1,103 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "verify-admin-updates",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"--test",
+				"server/tests/csvStore.test.js"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "admin-debug-server",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"server/server.js"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "admin-route-probe",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"fetch('http://localhost:5000/api/applications/6e9fc297-cf53-4abc-b9b6-c578624ee3c3',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({status:'accepted',reviewed:true,reviewNote:'Verification',decisionReason:'Verification'})}).then(async r=>{console.log('STATUS='+r.status);console.log(await r.text())}).catch(e=>{console.error(e);process.exit(1)})"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "admin-route-probe",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"server/tests/adminRouteProbe.js"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "execute-admin-probe-file",
+			"type": "shell",
+			"command": "node server/tests/adminRouteProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "probe-admin-listener-ports",
+			"type": "shell",
+			"command": "node server/tests/proxyPortProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "execute-admin-lifecycle-probe",
+			"type": "shell",
+			"command": "node server/tests/adminLifecycleProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "execute-frontend-proxy-probe",
+			"type": "shell",
+			"command": "node server/tests/frontendProxyProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "execute-live-admin-probe",
+			"type": "shell",
+			"command": "node server/tests/liveAdminMutationProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "execute-render-mutation-probe",
+			"type": "shell",
+			"command": "node server/tests/renderMutationProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "execute-vercel-live-probe",
+			"type": "shell",
+			"command": "node server/tests/liveAdminMutationProbe.js",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
