@@ -1,9 +1,10 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const fs = require("node:fs");
 const { uploadsDir } = require("./models/storagePaths");
-
-require("dotenv").config();
+const { connectDatabase } = require("./models/database");
 
 const app = express();
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -35,8 +36,14 @@ app.use(cors({
 app.use(express.json());
 app.use("/uploads", express.static(uploadsDir));
 
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+app.get("/health", async (req, res) => {
+  try {
+    const database = await connectDatabase();
+    res.json({ status: "ok", database: database.mode });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", error: error.message });
+  }
 });
 
 app.use("/api/applications", require("./routes/applicationRoutes"));
@@ -44,4 +51,12 @@ app.use("/api/testimonials", require("./routes/testimonialRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
 const port = Number(process.env.PORT) || 5000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+connectDatabase()
+  .then(({ mode }) => {
+    console.log(`Server running on port ${port} using ${mode}`);
+    app.listen(port);
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

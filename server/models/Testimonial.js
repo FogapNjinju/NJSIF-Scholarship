@@ -1,25 +1,7 @@
-const { createCsvStore } = require("./csvStore");
+const { isMongoConfigured } = require("./database");
 
-const store = createCsvStore();
+const TestimonialModel = isMongoConfigured
+  ? require("./MongoTestimonial")
+  : require("./CsvTestimonial");
 
-class Testimonial {
-  constructor(data = {}) {
-    Object.assign(this, data);
-  }
-
-  static find() {
-    return store.listTestimonials();
-  }
-
-  static async create(data) {
-    return store.createTestimonial(data);
-  }
-
-  async save() {
-    const saved = await store.createTestimonial(this);
-    Object.assign(this, saved);
-    return saved;
-  }
-}
-
-module.exports = Testimonial;
+module.exports = TestimonialModel;
