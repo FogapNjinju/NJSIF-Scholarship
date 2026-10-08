@@ -2,6 +2,7 @@ const backendUrl = (process.env.API_URL || "http://localhost:5000").replace(/\/$
 
 const hopHeaders = new Set([
   "connection",
+  "content-encoding",
   "content-length",
   "host",
   "origin",
