@@ -242,6 +242,7 @@ export default function Apply() {
                         className="field-control"
                       >
                         <option>High School</option>
+                        <option>Secondary Education</option>
                         <option>College / University</option>
                         <option>Graduate</option>
                         <option>Other</option>
