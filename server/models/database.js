@@ -1,6 +1,20 @@
 const mongoose = require("mongoose");
 
-const mongoUri = process.env.MONGODB_URI?.trim();
+const normalizeEnvKey = (key) => (typeof key === "string" ? key.trim() : key);
+
+const readEnv = (name) => {
+  const exactKey = process.env[name];
+  if (typeof exactKey === "string" && exactKey.trim()) {
+    return exactKey.trim();
+  }
+
+  const alternateKey = Object.keys(process.env).find((key) => normalizeEnvKey(key) === name);
+  const alternateValue = alternateKey ? process.env[alternateKey] : undefined;
+
+  return typeof alternateValue === "string" ? alternateValue.trim() : "";
+};
+
+const mongoUri = readEnv("MONGODB_URI");
 const isMongoConfigured = Boolean(mongoUri);
 
 const connectDatabase = async () => {

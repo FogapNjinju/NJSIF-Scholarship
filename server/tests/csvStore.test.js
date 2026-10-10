@@ -57,3 +57,17 @@ test("testimonial records persist in CSV", async () => {
   assert.equal(listed[0]._id, created._id);
   assert.equal(listed[0].quote, "The scholarship opened doors.");
 });
+
+test("database mode recognizes Mongo URI even when the .env key includes a space before the equals sign", async () => {
+  const dbPath = require.resolve("../models/database");
+  delete require.cache[dbPath];
+
+  delete process.env.MONGODB_URI;
+  process.env["MONGODB_URI "] = "mongodb://example.test/njsif-scholarship";
+
+  const { isMongoConfigured } = require("../models/database");
+  assert.equal(isMongoConfigured, true);
+
+  delete process.env["MONGODB_URI "];
+  require.cache[dbPath] && delete require.cache[dbPath];
+});
