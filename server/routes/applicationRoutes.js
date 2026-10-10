@@ -260,7 +260,10 @@ const archiveApplication = async (req, res) => {
       decisionReason: req.body?.decisionReason ?? existing.decisionReason,
     });
 
-    const updated = await Application.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
+    const updated = await Application.findByIdAndUpdate(req.params.id, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
     res.json(updated);
   } catch (error) {
     console.error(error);
@@ -281,7 +284,10 @@ const restoreApplication = async (req, res) => {
       status: req.body?.status || "pending",
     });
 
-    const updated = await Application.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
+    const updated = await Application.findByIdAndUpdate(req.params.id, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
     res.json(updated);
   } catch (error) {
     console.error(error);
@@ -303,7 +309,10 @@ router.put("/:id", async (req, res) => {
     }
 
     const updatePayload = buildUpdatePayload(existing, req.body);
-    const updated = await Application.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
+    const updated = await Application.findByIdAndUpdate(req.params.id, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
     res.json(updated);
   } catch (error) {
     console.error(error);

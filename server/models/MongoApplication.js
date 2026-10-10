@@ -26,4 +26,23 @@ const applicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const normalizeMongoUpdatePayload = (updatePayload = {}) => {
+  if (!updatePayload || typeof updatePayload !== "object" || Array.isArray(updatePayload)) {
+    return { $set: updatePayload || {} };
+  }
+
+  const hasMongoOperators = Object.keys(updatePayload).some((key) => key.startsWith("$") || key === "_id");
+  return hasMongoOperators ? updatePayload : { $set: updatePayload };
+};
+
+const originalFindByIdAndUpdate = mongoose.Model.findByIdAndUpdate;
+
+applicationSchema.statics.findByIdAndUpdate = function findByIdAndUpdate(id, updatePayload, options = {}) {
+  return originalFindByIdAndUpdate.call(this, id, normalizeMongoUpdatePayload(updatePayload), {
+    new: true,
+    runValidators: true,
+    ...options,
+  });
+};
+
 module.exports = mongoose.model("Application", applicationSchema);

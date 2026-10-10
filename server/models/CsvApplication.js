@@ -55,8 +55,12 @@ class Application {
     return store.getApplicationById(id);
   }
 
-  static async findByIdAndUpdate(id, updatePayload) {
-    return store.updateApplication(id, updatePayload);
+  static async findByIdAndUpdate(id, updatePayload, options = {}) {
+    const normalized = updatePayload && typeof updatePayload === "object" && !Array.isArray(updatePayload)
+      ? updatePayload
+      : { $set: updatePayload || {} };
+
+    return store.updateApplication(id, normalized, options);
   }
 
   static async findByIdAndDelete(id) {
