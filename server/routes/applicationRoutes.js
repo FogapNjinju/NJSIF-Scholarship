@@ -4,6 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const Application = require("../models/Application");
 const { uploadsDir } = require("../models/storagePaths");
+const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -16,7 +17,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage, limits: { fileSize: MAX_DOCUMENT_BYTES } });
 
 const ALLOWED_STATUSES = ["pending", "accepted", "rejected", "archived", "deleted"];
 
@@ -136,7 +137,20 @@ const uploadFields = upload.fields([
   { name: "idCard", maxCount: 1 },
 ]);
 
-router.post("/", uploadFields, async (req, res) => {
+router.post("/", (req, res, next) => {
+  uploadFields(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    const isFileTooLarge = error.code === "LIMIT_FILE_SIZE";
+    return res.status(isFileTooLarge ? 413 : 400).json({
+      error: isFileTooLarge
+        ? "Each document must be 4 MB or smaller."
+        : "Unable to process uploaded documents.",
+    });
+  });
+}, async (req, res) => {
   try {
     const { name, email, education, program, goals } = req.body;
     const files = req.files || {};

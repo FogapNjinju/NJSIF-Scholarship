@@ -12,6 +12,8 @@ const initialForm = {
 };
 
 const APPLICATION_URL = "/api/applications";
+const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
+const DOCUMENT_SIZE_ERROR = "All uploaded documents together must be 4 MB or smaller. Please reduce the file sizes or upload fewer documents.";
 const APPLICATION_YEAR = new Date().getFullYear();
 const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
 const SUPPORT_EMAIL = "info@njsif.org";
@@ -57,7 +59,17 @@ export default function Apply() {
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const handleDocumentChange = (key, file) => {
-    setDocuments((prev) => ({ ...prev, [key]: file }));
+    const updatedDocuments = { ...documents, [key]: file };
+    const totalBytes = Object.values(updatedDocuments).reduce((total, document) => total + (document?.size || 0), 0);
+
+    if (totalBytes > MAX_DOCUMENT_BYTES) {
+      setError(DOCUMENT_SIZE_ERROR);
+      return false;
+    }
+
+    setDocuments(updatedDocuments);
+    setError("");
+    return true;
   };
 
   const nextStep = () => {
@@ -92,6 +104,12 @@ export default function Apply() {
 
     if (!validateEmail(form.email)) {
       setError("Enter a valid email address.");
+      return;
+    }
+
+    const totalDocumentBytes = Object.values(documents).reduce((total, document) => total + (document?.size || 0), 0);
+    if (totalDocumentBytes > MAX_DOCUMENT_BYTES) {
+      setError(DOCUMENT_SIZE_ERROR);
       return;
     }
 
@@ -130,7 +148,9 @@ export default function Apply() {
       }
     } catch (err) {
       setStatus("error");
-      setError(err?.response?.data?.error || err.message || "Unable to submit application.");
+      setError(err?.response?.status === 413
+        ? DOCUMENT_SIZE_ERROR
+        : err?.response?.data?.error || err.message || "Unable to submit application.");
     }
   };
 
@@ -286,7 +306,7 @@ export default function Apply() {
                       Upload any available supporting files: GCE O/L, GCE A/L, university transcript, attestation, and passport or ID card.
                     </p>
                     <p className="mt-2 text-xs text-slate-300">
-                      Accepted formats: PDF, JPG, JPEG, PNG. Each file helps reviewers better understand your academic record.
+                      Accepted formats: PDF, JPG, JPEG, PNG. Combined document size must be 4 MB or smaller.
                     </p>
 
                     <div className="mt-6 space-y-4">
@@ -316,7 +336,10 @@ export default function Apply() {
                             <input
                               type="file"
                               accept=".pdf,.jpg,.jpeg,.png"
-                              onChange={(e) => handleDocumentChange(field.key, e.target.files?.[0] || null)}
+                              onChange={(e) => {
+                                const accepted = handleDocumentChange(field.key, e.target.files?.[0] || null);
+                                if (!accepted) e.target.value = "";
+                              }}
                               className="field-control block file:mr-4 file:rounded-full file:border-0 file:bg-sky-500/10 file:px-3 file:py-1.5 file:font-medium file:text-sky-200"
                             />
                             {selectedFile ? (

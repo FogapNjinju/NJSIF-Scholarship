@@ -12,6 +12,8 @@ const initialForm = {
 };
 
 const APPLICATION_URL = "/api/applications";
+const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
+const DOCUMENT_SIZE_ERROR = "La taille totale des documents ne doit pas dépasser 4 Mo. Réduisez la taille des fichiers ou envoyez-en moins.";
 const APPLICATION_YEAR = new Date().getFullYear();
 const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
 const SUPPORT_EMAIL = "info@njsif.org";
@@ -49,7 +51,17 @@ export default function ApplyFr() {
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const handleDocumentChange = (key, file) => {
-    setDocuments((prev) => ({ ...prev, [key]: file }));
+    const updatedDocuments = { ...documents, [key]: file };
+    const totalBytes = Object.values(updatedDocuments).reduce((total, document) => total + (document?.size || 0), 0);
+
+    if (totalBytes > MAX_DOCUMENT_BYTES) {
+      setError(DOCUMENT_SIZE_ERROR);
+      return false;
+    }
+
+    setDocuments(updatedDocuments);
+    setError("");
+    return true;
   };
 
   const handleSubmit = async (e) => {
@@ -63,6 +75,12 @@ export default function ApplyFr() {
 
     if (!validateEmail(form.email)) {
       setError("Veuillez entrer une adresse e-mail valide.");
+      return;
+    }
+
+    const totalDocumentBytes = Object.values(documents).reduce((total, document) => total + (document?.size || 0), 0);
+    if (totalDocumentBytes > MAX_DOCUMENT_BYTES) {
+      setError(DOCUMENT_SIZE_ERROR);
       return;
     }
 
@@ -101,7 +119,9 @@ export default function ApplyFr() {
       }
     } catch (err) {
       setStatus("error");
-      setError(err?.response?.data?.error || err.message || "Impossible d’envoyer la candidature.");
+      setError(err?.response?.status === 413
+        ? DOCUMENT_SIZE_ERROR
+        : err?.response?.data?.error || err.message || "Impossible d’envoyer la candidature.");
     }
   };
 
@@ -224,7 +244,7 @@ export default function ApplyFr() {
                     Vous pouvez ajouter vos relevés GCE O/L, GCE A/L, transcript universitaire, attestation et carte d’identité ou passeport.
                   </p>
                   <p className="mt-2 text-xs text-slate-300">
-                    Formats acceptés : PDF, JPG, JPEG, PNG. Ces pièces aident le comité à mieux comprendre votre dossier.
+                    Formats acceptés : PDF, JPG, JPEG, PNG. La taille totale des documents ne doit pas dépasser 4 Mo.
                   </p>
 
                   <div className="mt-6 space-y-4">
@@ -254,7 +274,10 @@ export default function ApplyFr() {
                           <input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) => handleDocumentChange(field.key, e.target.files?.[0] || null)}
+                            onChange={(e) => {
+                              const accepted = handleDocumentChange(field.key, e.target.files?.[0] || null);
+                              if (!accepted) e.target.value = "";
+                            }}
                             className="field-control block file:mr-4 file:rounded-full file:border-0 file:bg-sky-500/10 file:px-3 file:py-1.5 file:font-medium file:text-sky-200"
                           />
                           {selectedFile ? (
