@@ -14,6 +14,7 @@ const initialForm = {
 const APPLICATION_URL = "/api/applications";
 const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 const DOCUMENT_SIZE_ERROR = "All uploaded documents together must be 4 MB or smaller. Please reduce the file sizes or upload fewer documents.";
+const DUPLICATE_APPLICATION_ERROR = "An application has already been submitted with this email address. Contact us if you need help.";
 const APPLICATION_YEAR = new Date().getFullYear();
 const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
 const SUPPORT_EMAIL = "info@njsif.org";
@@ -150,7 +151,9 @@ export default function Apply() {
       setStatus("error");
       setError(err?.response?.status === 413
         ? DOCUMENT_SIZE_ERROR
-        : err?.response?.data?.error || err.message || "Unable to submit application.");
+        : err?.response?.status === 409
+          ? DUPLICATE_APPLICATION_ERROR
+          : err?.response?.data?.error || err.message || "Unable to submit application.");
     }
   };
 

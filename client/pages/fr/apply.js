@@ -14,6 +14,7 @@ const initialForm = {
 const APPLICATION_URL = "/api/applications";
 const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 const DOCUMENT_SIZE_ERROR = "La taille totale des documents ne doit pas dépasser 4 Mo. Réduisez la taille des fichiers ou envoyez-en moins.";
+const DUPLICATE_APPLICATION_ERROR = "Une candidature a déjà été envoyée avec cette adresse e-mail. Contactez-nous si vous avez besoin d’aide.";
 const APPLICATION_YEAR = new Date().getFullYear();
 const APPLICATION_DEADLINE = new Date(APPLICATION_YEAR, 9, 21, 23, 59, 59);
 const SUPPORT_EMAIL = "info@njsif.org";
@@ -121,7 +122,9 @@ export default function ApplyFr() {
       setStatus("error");
       setError(err?.response?.status === 413
         ? DOCUMENT_SIZE_ERROR
-        : err?.response?.data?.error || err.message || "Impossible d’envoyer la candidature.");
+        : err?.response?.status === 409
+          ? DUPLICATE_APPLICATION_ERROR
+          : err?.response?.data?.error || err.message || "Impossible d’envoyer la candidature.");
     }
   };
 

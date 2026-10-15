@@ -154,6 +154,21 @@ router.post("/", (req, res, next) => {
   try {
     const { name, email, education, program, goals } = req.body;
     const files = req.files || {};
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (normalizedEmail) {
+      const applications = await Application.find();
+      const alreadyApplied = applications.some((application) =>
+        application.status !== "deleted" && String(application.email || "").trim().toLowerCase() === normalizedEmail
+      );
+
+      if (alreadyApplied) {
+        await Promise.allSettled(Object.values(files).flat().map((file) => fs.promises.unlink(file.path)));
+        return res.status(409).json({
+          error: "An application has already been submitted with this email address. Contact support if you need help.",
+        });
+      }
+    }
 
     const documents = {
       gceOLevel: files.gceOLevel?.[0]?.filename || "",
