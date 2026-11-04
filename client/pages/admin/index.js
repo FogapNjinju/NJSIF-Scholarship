@@ -41,9 +41,22 @@ const documentLabels = {
   idCard: "Passport / ID",
 };
 
+const isRemoteDocumentUrl = (value = "") => /^https?:\/\//i.test(String(value));
 const getDocumentEntries = (documents = {}) => Object.entries(documents || {}).filter(([, value]) => value);
-const getDocumentViewUrl = (filename) => `/api/backend/applications/documents/${encodeURIComponent(filename)}/view`;
-const getDocumentDownloadUrl = (filename) => `/api/backend/applications/documents/${encodeURIComponent(filename)}/download`;
+const getDocumentViewUrl = (filename) => {
+  if (isRemoteDocumentUrl(filename)) {
+    return filename;
+  }
+
+  return `/api/backend/applications/documents/${encodeURIComponent(filename)}/view`;
+};
+const getDocumentDownloadUrl = (filename) => {
+  if (isRemoteDocumentUrl(filename)) {
+    return filename;
+  }
+
+  return `/api/backend/applications/documents/${encodeURIComponent(filename)}/download`;
+};
 const getScoreValue = (value) => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return 0;

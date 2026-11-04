@@ -2,22 +2,70 @@ const router = require("express").Router();
 const fs = require("fs");
 const multer = require("multer");
 const path = require("path");
+const cloudinary = require("cloudinary").v2;
 const Application = require("../models/Application");
 const { uploadsDir } = require("../models/storagePaths");
 const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    fs.mkdir(uploadsDir, { recursive: true }, (error) => cb(error, uploadsDir));
-  },
-  filename: (req, file, cb) => {
-    const suffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "-");
-    cb(null, `${suffix}-${safeName}`);
-  },
+const isCloudinaryConfigured = () =>
+  Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+
+if (isCloudinaryConfigured()) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_DOCUMENT_BYTES },
 });
 
-const upload = multer({ storage, limits: { fileSize: MAX_DOCUMENT_BYTES } });
+const uploadBufferToStorage = async (file) => {
+  if (!file || !file.buffer) {
+    return "";
+  }
+
+  if (isCloudinaryConfigured()) {
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "njsif-applications",
+          resource_type: "auto",
+          use_filename: true,
+          unique_filename: true,
+        },
+        (error, response) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve(response);
+        }
+      );
+
+      stream.end(file.buffer);
+    });
+
+    return result?.secure_url || result?.url || "";
+  }
+
+  const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "-");
+  const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+  const fullPath = path.join(uploadsDir, uniqueName);
+
+  await fs.promises.mkdir(uploadsDir, { recursive: true });
+  await fs.promises.writeFile(fullPath, file.buffer);
+
+  return uniqueName;
+};
 
 const ALLOWED_STATUSES = ["pending", "accepted", "rejected", "archived", "deleted"];
 
@@ -163,20 +211,21 @@ router.post("/", (req, res, next) => {
       );
 
       if (alreadyApplied) {
-        await Promise.allSettled(Object.values(files).flat().map((file) => fs.promises.unlink(file.path)));
         return res.status(409).json({
           error: "An application has already been submitted with this email address. Contact support if you need help.",
         });
       }
     }
 
-    const documents = {
-      gceOLevel: files.gceOLevel?.[0]?.filename || "",
-      gceALevel: files.gceALevel?.[0]?.filename || "",
-      transcript: files.transcript?.[0]?.filename || "",
-      attestation: files.attestation?.[0]?.filename || "",
-      idCard: files.idCard?.[0]?.filename || "",
-    };
+    const documentEntries = await Promise.all(
+      Object.entries(files).map(async ([fieldName, fileList]) => {
+        const file = fileList?.[0];
+        const uploadedValue = await uploadBufferToStorage(file);
+        return [fieldName, uploadedValue];
+      })
+    );
+
+    const documents = Object.fromEntries(documentEntries);
 
     const app = new Application({
       name,
@@ -214,7 +263,13 @@ router.get("/", async (req, res) => {
 
 router.get("/documents/:filename/view", async (req, res) => {
   try {
-    const safeFilename = path.basename(req.params.filename);
+    const value = decodeURIComponent(req.params.filename || "");
+
+    if (/^https?:\/\//i.test(value)) {
+      return res.redirect(value);
+    }
+
+    const safeFilename = path.basename(value);
     const filePath = path.join(uploadsDir, safeFilename);
 
     if (!fs.existsSync(filePath)) {
@@ -230,7 +285,13 @@ router.get("/documents/:filename/view", async (req, res) => {
 
 router.get("/documents/:filename/download", async (req, res) => {
   try {
-    const safeFilename = path.basename(req.params.filename);
+    const value = decodeURIComponent(req.params.filename || "");
+
+    if (/^https?:\/\//i.test(value)) {
+      return res.redirect(value);
+    }
+
+    const safeFilename = path.basename(value);
     const filePath = path.join(uploadsDir, safeFilename);
 
     if (!fs.existsSync(filePath)) {
