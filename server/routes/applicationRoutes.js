@@ -20,6 +20,9 @@ if (isCloudinaryConfigured()) {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+  console.log("Cloudinary configured for uploads.");
+} else {
+  console.warn("Cloudinary not configured; uploads will fall back to local filesystem storage.");
 }
 
 const upload = multer({
@@ -33,20 +36,25 @@ const uploadBufferToStorage = async (file) => {
   }
 
   if (isCloudinaryConfigured()) {
+    console.log(`Uploading document to Cloudinary: ${file.originalname}`);
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: "njsif-applications",
           resource_type: "auto",
+          type: "upload",
+          access_mode: "public",
           use_filename: true,
           unique_filename: true,
         },
         (error, response) => {
           if (error) {
+            console.error("Cloudinary upload error:", error.message || error);
             reject(error);
             return;
           }
 
+          console.log("Cloudinary upload successful for:", file.originalname);
           resolve(response);
         }
       );
@@ -246,8 +254,15 @@ router.post("/", (req, res, next) => {
     await app.save();
     res.json(app);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Upload failed" });
+    console.error("Application upload failed:", {
+      message: error?.message,
+      stack: error?.stack,
+      fileFields: Object.keys(req.files || {}),
+    });
+    res.status(500).json({
+      error: "Upload failed",
+      ...(process.env.NODE_ENV !== "production" ? { details: error?.message } : {}),
+    });
   }
 });
 
