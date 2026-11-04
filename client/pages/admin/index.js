@@ -221,11 +221,15 @@ function DocumentActions({ documents }) {
         docs.map(async ([key, value]) => {
           const docKey = `${key}-${value}`;
 
+          if (isRemoteDocumentUrl(value)) {
+            return [docKey, false];
+          }
+
           try {
             const response = await fetch(getDocumentViewUrl(value), { method: "HEAD" });
-            return [docKey, !response.ok];
+            return [docKey, !response.ok && response.status !== 405];
           } catch (error) {
-            return [docKey, true];
+            return [docKey, false];
           }
         })
       );
