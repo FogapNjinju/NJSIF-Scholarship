@@ -58,6 +58,26 @@ test("testimonial records persist in CSV", async () => {
   assert.equal(listed[0].quote, "The scholarship opened doors.");
 });
 
+test("storage paths default to a dedicated persistent directory when no override is configured", async () => {
+  const storagePath = require.resolve("../models/storagePaths");
+  delete require.cache[storagePath];
+
+  const originalPersistentDir = process.env.PERSISTENT_DIR;
+  delete process.env.PERSISTENT_DIR;
+
+  const { uploadsDir, dataDir } = require("../models/storagePaths");
+  assert.match(uploadsDir, /persistent-data[/\\]uploads$/i);
+  assert.match(dataDir, /persistent-data[/\\]data$/i);
+
+  if (typeof originalPersistentDir === "undefined") {
+    delete process.env.PERSISTENT_DIR;
+  } else {
+    process.env.PERSISTENT_DIR = originalPersistentDir;
+  }
+
+  delete require.cache[storagePath];
+});
+
 test("database mode recognizes Mongo URI even when the .env key includes a space before the equals sign", async () => {
   const dbPath = require.resolve("../models/database");
   delete require.cache[dbPath];

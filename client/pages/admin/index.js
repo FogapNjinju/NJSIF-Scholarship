@@ -198,6 +198,38 @@ const exportApplicationsToExcel = (applications = [], filename = "applications.x
 
 function DocumentActions({ documents }) {
   const docs = getDocumentEntries(documents);
+  const [missingDocs, setMissingDocs] = useState({});
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkDocuments = async () => {
+      const checks = await Promise.all(
+        docs.map(async ([key, value]) => {
+          const docKey = `${key}-${value}`;
+
+          try {
+            const response = await fetch(getDocumentViewUrl(value), { method: "HEAD" });
+            return [docKey, !response.ok];
+          } catch (error) {
+            return [docKey, true];
+          }
+        })
+      );
+
+      if (!isMounted) return;
+
+      setMissingDocs(Object.fromEntries(checks));
+    };
+
+    if (docs.length > 0) {
+      checkDocuments();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [docs]);
 
   if (docs.length === 0) {
     return <span className="text-xs text-slate-400">No documents uploaded</span>;
@@ -205,30 +237,48 @@ function DocumentActions({ documents }) {
 
   return (
     <div className="mt-3 space-y-3">
-      {docs.map(([key, value]) => (
-        <div
-          key={`${key}-${value}`}
-          className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div>
-            <p className="text-sm font-medium text-white">{documentLabels[key] || key}</p>
-            <p className="text-xs text-slate-400">{value}</p>
+      {docs.map(([key, value]) => {
+        const docKey = `${key}-${value}`;
+        const isMissing = !!missingDocs[docKey];
+
+        return (
+          <div
+            key={docKey}
+            className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-sm font-medium text-white">{documentLabels[key] || key}</p>
+              <p className="text-xs text-slate-400">{value}</p>
+              {isMissing && (
+                <p className="mt-1 text-xs font-medium text-amber-300">
+                  File no longer available. This usually means the upload storage was reset or the document was removed.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {isMissing ? (
+                <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium text-amber-200">
+                  Missing file
+                </span>
+              ) : (
+                <>
+                  <a
+                    href={getDocumentViewUrl(value)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs"
+                  >
+                    View
+                  </a>
+                  <a href={getDocumentDownloadUrl(value)} className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs">
+                    Download
+                  </a>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={getDocumentViewUrl(value)}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs"
-            >
-              View
-            </a>
-            <a href={getDocumentDownloadUrl(value)} className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs">
-              Download
-            </a>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
