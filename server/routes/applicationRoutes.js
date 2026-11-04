@@ -42,6 +42,8 @@ const uploadBufferToStorage = async (file) => {
         {
           folder: "njsif-applications",
           resource_type: "auto",
+          type: "upload",
+          access_mode: "public",
           use_filename: true,
           unique_filename: true,
         },
