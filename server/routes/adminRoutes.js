@@ -1,5 +1,42 @@
 const router = require("express").Router();
 const Application = require("../models/Application");
+const {
+  clearSessionCookie,
+  createSessionToken,
+  isAdminAuthConfigured,
+  requireAdminAuth,
+  safeEqual,
+  setSessionCookie,
+} = require("../middleware/adminAuth");
+
+router.post("/login", (req, res) => {
+  if (!isAdminAuthConfigured()) {
+    return res.status(503).json({ error: "Admin authentication is not configured." });
+  }
+
+  const configuredEmail = process.env.ADMIN_EMAIL.trim().toLowerCase();
+  const submittedEmail = String(req.body?.email || "").trim().toLowerCase();
+  const submittedPassword = String(req.body?.password || "");
+
+  if (!safeEqual(submittedEmail, configuredEmail) || !safeEqual(submittedPassword, process.env.ADMIN_PASSWORD)) {
+    return res.status(401).json({ error: "Invalid admin credentials." });
+  }
+
+  const token = createSessionToken(configuredEmail, process.env.ADMIN_SESSION_SECRET);
+  setSessionCookie(res, token);
+  return res.json({ authenticated: true });
+});
+
+router.get("/session", requireAdminAuth, (req, res) => {
+  res.json({ authenticated: true, email: req.admin.email });
+});
+
+router.post("/logout", (req, res) => {
+  clearSessionCookie(res);
+  res.json({ authenticated: false });
+});
+
+router.use(requireAdminAuth);
 
 router.get("/applications", async (req, res) => {
   try {
