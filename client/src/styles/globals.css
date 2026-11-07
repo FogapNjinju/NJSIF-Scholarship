@@ -78,6 +78,16 @@ textarea {
   font: inherit;
 }
 
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: #07101f;
+  color: var(--foreground);
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,

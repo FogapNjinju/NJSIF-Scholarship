@@ -1,34 +1,35 @@
+import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@njsif.org";
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "NJSIFAdmin2026!";
-const SESSION_KEY = "njsif-admin-session";
 
 export default function AdminLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && localStorage.getItem(SESSION_KEY) === "active") {
-      router.replace("/admin");
-    }
+    axios.get("/api/backend/admin/session")
+      .then(() => router.replace("/admin"))
+      .catch(() => {});
   }, [router]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      localStorage.setItem(SESSION_KEY, "active");
-      router.push("/admin");
-      return;
+    try {
+      await axios.post("/api/backend/admin/login", { email, password });
+      setPassword("");
+      await router.replace("/admin");
+    } catch (requestError) {
+      setError(requestError?.response?.data?.error || "Unable to sign in. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setError("Invalid admin credentials.");
   };
 
   return (
@@ -73,9 +74,10 @@ export default function AdminLogin() {
 
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center rounded-3xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+            disabled={isSubmitting}
+            className="inline-flex w-full items-center justify-center rounded-3xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Log in
+            {isSubmitting ? "Signing in..." : "Log in"}
           </button>
         </form>
 

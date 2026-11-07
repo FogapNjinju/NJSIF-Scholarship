@@ -5,7 +5,10 @@ const path = require("path");
 const cloudinary = require("cloudinary").v2;
 const Application = require("../models/Application");
 const { uploadsDir } = require("../models/storagePaths");
+const { requireAdminAuth } = require("../middleware/adminAuth");
+const { createSignedDocumentUrl } = require("../utils/cloudinaryDocuments");
 const MAX_DOCUMENT_BYTES = 4 * 1024 * 1024;
+const DOCUMENT_FIELDS = new Set(["gceOLevel", "gceALevel", "transcript", "attestation", "idCard"]);
 
 const isCloudinaryConfigured = () =>
   Boolean(
@@ -20,6 +23,9 @@ if (isCloudinaryConfigured()) {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
+  console.log("Cloudinary configured for uploads.");
+} else {
+  console.warn("Cloudinary not configured; uploads will fall back to local filesystem storage.");
 }
 
 const upload = multer({
@@ -33,20 +39,25 @@ const uploadBufferToStorage = async (file) => {
   }
 
   if (isCloudinaryConfigured()) {
+    console.log(`Uploading document to Cloudinary: ${file.originalname}`);
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: "njsif-applications",
           resource_type: "auto",
+          type: "authenticated",
+          access_mode: "authenticated",
           use_filename: true,
           unique_filename: true,
         },
         (error, response) => {
           if (error) {
+            console.error("Cloudinary upload error:", error.message || error);
             reject(error);
             return;
           }
 
+          console.log("Cloudinary upload successful for:", file.originalname);
           resolve(response);
         }
       );
@@ -246,8 +257,69 @@ router.post("/", (req, res, next) => {
     await app.save();
     res.json(app);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Upload failed" });
+    console.error("Application upload failed:", {
+      message: error?.message,
+      stack: error?.stack,
+      fileFields: Object.keys(req.files || {}),
+    });
+    res.status(500).json({
+      error: "Upload failed",
+      ...(process.env.NODE_ENV !== "production" ? { details: error?.message } : {}),
+    });
+  }
+});
+
+router.use(requireAdminAuth);
+
+const deliverDocument = async (req, res, attachment) => {
+  const { id, field } = req.params;
+  if (!DOCUMENT_FIELDS.has(field)) {
+    return res.status(404).json({ error: "Document not found" });
+  }
+
+  const application = await Application.findById(id);
+  const value = application?.documents?.[field];
+  if (!application || !value) {
+    return res.status(404).json({ error: "Document not found" });
+  }
+
+  if (/^https?:\/\//i.test(String(value))) {
+    const signedUrl = createSignedDocumentUrl({
+      value,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      cloudinary,
+      attachment,
+    });
+    if (!signedUrl) {
+      return res.status(404).json({ error: "Stored document URL is not supported" });
+    }
+    return res.redirect(302, signedUrl);
+  }
+
+  const safeFilename = path.basename(String(value));
+  const filePath = path.join(uploadsDir, safeFilename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Document not found" });
+  }
+
+  return attachment ? res.download(filePath, safeFilename) : res.sendFile(filePath);
+};
+
+router.get("/:id/documents/:field/view", async (req, res) => {
+  try {
+    return await deliverDocument(req, res, false);
+  } catch (error) {
+    console.error("Document view failed:", error);
+    return res.status(500).json({ error: "Unable to open document" });
+  }
+});
+
+router.get("/:id/documents/:field/download", async (req, res) => {
+  try {
+    return await deliverDocument(req, res, true);
+  } catch (error) {
+    console.error("Document download failed:", error);
+    return res.status(500).json({ error: "Unable to download document" });
   }
 });
 
@@ -258,50 +330,6 @@ router.get("/", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Unable to load applications" });
-  }
-});
-
-router.get("/documents/:filename/view", async (req, res) => {
-  try {
-    const value = decodeURIComponent(req.params.filename || "");
-
-    if (/^https?:\/\//i.test(value)) {
-      return res.redirect(value);
-    }
-
-    const safeFilename = path.basename(value);
-    const filePath = path.join(uploadsDir, safeFilename);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "Document not found" });
-    }
-
-    return res.sendFile(filePath);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Unable to open document" });
-  }
-});
-
-router.get("/documents/:filename/download", async (req, res) => {
-  try {
-    const value = decodeURIComponent(req.params.filename || "");
-
-    if (/^https?:\/\//i.test(value)) {
-      return res.redirect(value);
-    }
-
-    const safeFilename = path.basename(value);
-    const filePath = path.join(uploadsDir, safeFilename);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "Document not found" });
-    }
-
-    return res.download(filePath, safeFilename);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Unable to download document" });
   }
 });
 

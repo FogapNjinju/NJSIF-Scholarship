@@ -15,8 +15,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const SESSION_KEY = "njsif-admin-session";
-
 const statusStyles = {
   pending: "border-amber-500/30 bg-amber-500/10 text-amber-200",
   accepted: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
@@ -41,22 +39,11 @@ const documentLabels = {
   idCard: "Passport / ID",
 };
 
-const isRemoteDocumentUrl = (value = "") => /^https?:\/\//i.test(String(value));
 const getDocumentEntries = (documents = {}) => Object.entries(documents || {}).filter(([, value]) => value);
-const getDocumentViewUrl = (filename) => {
-  if (isRemoteDocumentUrl(filename)) {
-    return filename;
-  }
-
-  return `/api/backend/applications/documents/${encodeURIComponent(filename)}/view`;
-};
-const getDocumentDownloadUrl = (filename) => {
-  if (isRemoteDocumentUrl(filename)) {
-    return filename;
-  }
-
-  return `/api/backend/applications/documents/${encodeURIComponent(filename)}/download`;
-};
+const getDocumentViewUrl = (applicationId, field) =>
+  `/api/backend/applications/${encodeURIComponent(applicationId)}/documents/${encodeURIComponent(field)}/view`;
+const getDocumentDownloadUrl = (applicationId, field) =>
+  `/api/backend/applications/${encodeURIComponent(applicationId)}/documents/${encodeURIComponent(field)}/download`;
 const getScoreValue = (value) => {
   const parsed = Number(value);
   if (Number.isNaN(parsed)) return 0;
@@ -209,40 +196,8 @@ const exportApplicationsToExcel = (applications = [], filename = "applications.x
   downloadFile(html, filename, "application/vnd.ms-excel;charset=utf-8;");
 };
 
-function DocumentActions({ documents }) {
+function DocumentActions({ applicationId, documents }) {
   const docs = getDocumentEntries(documents);
-  const [missingDocs, setMissingDocs] = useState({});
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const checkDocuments = async () => {
-      const checks = await Promise.all(
-        docs.map(async ([key, value]) => {
-          const docKey = `${key}-${value}`;
-
-          try {
-            const response = await fetch(getDocumentViewUrl(value), { method: "HEAD" });
-            return [docKey, !response.ok];
-          } catch (error) {
-            return [docKey, true];
-          }
-        })
-      );
-
-      if (!isMounted) return;
-
-      setMissingDocs(Object.fromEntries(checks));
-    };
-
-    if (docs.length > 0) {
-      checkDocuments();
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [docs]);
 
   if (docs.length === 0) {
     return <span className="text-xs text-slate-400">No documents uploaded</span>;
@@ -252,7 +207,6 @@ function DocumentActions({ documents }) {
     <div className="mt-3 space-y-3">
       {docs.map(([key, value]) => {
         const docKey = `${key}-${value}`;
-        const isMissing = !!missingDocs[docKey];
 
         return (
           <div
@@ -262,32 +216,22 @@ function DocumentActions({ documents }) {
             <div>
               <p className="text-sm font-medium text-white">{documentLabels[key] || key}</p>
               <p className="text-xs text-slate-400">{value}</p>
-              {isMissing && (
-                <p className="mt-1 text-xs font-medium text-amber-300">
-                  File no longer available. This usually means the upload storage was reset or the document was removed.
-                </p>
-              )}
             </div>
             <div className="flex flex-wrap gap-2">
-              {isMissing ? (
-                <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium text-amber-200">
-                  Missing file
-                </span>
-              ) : (
-                <>
-                  <a
-                    href={getDocumentViewUrl(value)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs"
-                  >
-                    View
-                  </a>
-                  <a href={getDocumentDownloadUrl(value)} className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs">
-                    Download
-                  </a>
-                </>
-              )}
+              <a
+                href={getDocumentViewUrl(applicationId, key)}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs"
+              >
+                View
+              </a>
+              <a
+                href={getDocumentDownloadUrl(applicationId, key)}
+                className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs"
+              >
+                Download
+              </a>
             </div>
           </div>
         );
@@ -432,18 +376,18 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    let isMounted = true;
+    axios.get("/api/backend/admin/session")
+      .then(() => {
+        if (isMounted) void fetchDashboard();
+      })
+      .catch(() => {
+        if (isMounted) router.replace("/admin/login");
+      });
 
-    if (localStorage.getItem(SESSION_KEY) !== "active") {
-      router.replace("/admin/login");
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      void fetchDashboard();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
+    return () => {
+      isMounted = false;
+    };
   }, [fetchDashboard, router]);
 
   const rankedApplications = useMemo(() => {
@@ -776,11 +720,14 @@ export default function AdminDashboard() {
     exportApplicationsToCsv(source, `${datedFile}.csv`);
   };
 
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(SESSION_KEY);
+  const handleLogout = async () => {
+    try {
+      await axios.post("/api/backend/admin/logout");
+    } catch (error) {
+      console.error("Admin logout failed:", error);
+    } finally {
+      router.replace("/admin/login");
     }
-    router.push("/admin/login");
   };
 
   return (
@@ -1222,7 +1169,7 @@ export default function AdminDashboard() {
                           <p className="text-sm font-semibold text-white">Supporting documents</p>
                           <span className="text-xs text-slate-400">{docs.length} file{docs.length === 1 ? "" : "s"}</span>
                         </div>
-                        <DocumentActions documents={application.documents} />
+                        <DocumentActions applicationId={application._id} documents={application.documents} />
                       </div>
                     </div>
                   );
@@ -1303,7 +1250,7 @@ export default function AdminDashboard() {
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
                 <p className="text-sm font-semibold text-white">Uploaded documents</p>
                 <p className="mt-2 text-xs text-slate-400">Admins can open each file in a new tab or download it directly.</p>
-                <DocumentActions documents={selectedApplication.documents} />
+                <DocumentActions applicationId={selectedApplication._id} documents={selectedApplication.documents} />
               </div>
             </div>
 
