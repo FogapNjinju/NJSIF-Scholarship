@@ -195,6 +195,24 @@ const uploadFields = upload.fields([
   { name: "attestation", maxCount: 1 },
   { name: "idCard", maxCount: 1 },
 ]);
+const updateApplicantUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_DOCUMENT_BYTES },
+  fileFilter(req, file, callback) {
+    const extension = path.extname(file.originalname).toLowerCase();
+    const acceptedTypes = new Set([".pdf", ".jpg", ".jpeg", ".png"]);
+    if (!acceptedTypes.has(extension)) {
+      return callback(new Error("Documents must be PDF, JPG, JPEG, or PNG files."));
+    }
+    return callback(null, true);
+  },
+}).fields([
+  { name: "gceOLevel", maxCount: 1 },
+  { name: "gceALevel", maxCount: 1 },
+  { name: "transcript", maxCount: 1 },
+  { name: "attestation", maxCount: 1 },
+  { name: "idCard", maxCount: 1 },
+]);
 
 router.post("/", (req, res, next) => {
   uploadFields(req, res, (error) => {
@@ -270,6 +288,83 @@ router.post("/", (req, res, next) => {
 });
 
 router.use(requireAdminAuth);
+
+router.put("/:id/details", (req, res, next) => {
+  updateApplicantUpload(req, res, (error) => {
+    if (!error) return next();
+
+    const isFileTooLarge = error.code === "LIMIT_FILE_SIZE";
+    return res.status(isFileTooLarge ? 413 : 400).json({
+      error: isFileTooLarge
+        ? "Each replacement document must be 4 MB or smaller."
+        : error.message || "Unable to process replacement documents.",
+    });
+  });
+}, async (req, res) => {
+  try {
+    const existing = await Application.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    const name = String(req.body?.name || "").trim();
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const education = String(req.body?.education || "").trim();
+    const program = String(req.body?.program || "").trim();
+    const goals = String(req.body?.goals || "").trim();
+    if (!name || !email || !education || !program || !goals) {
+      return res.status(400).json({ error: "Name, email, education, program, and goals are required." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
+    }
+
+    const applications = await Application.find();
+    const duplicateEmail = applications.some((application) =>
+      String(application._id) !== String(existing._id) &&
+      application.status !== "deleted" &&
+      String(application.email || "").trim().toLowerCase() === email
+    );
+    if (duplicateEmail) {
+      return res.status(409).json({ error: "Another application already uses this email address." });
+    }
+
+    const files = Object.values(req.files || {}).flat();
+    const totalBytes = files.reduce((total, file) => total + file.size, 0);
+    if (totalBytes > MAX_DOCUMENT_BYTES) {
+      return res.status(413).json({ error: "Replacement documents together must be 4 MB or smaller." });
+    }
+
+    const documents = { ...(existing.documents || {}) };
+    for (const [field, fileList] of Object.entries(req.files || {})) {
+      const uploadedValue = await uploadBufferToStorage(fileList[0]);
+      if (!uploadedValue) {
+        return res.status(502).json({ error: `Unable to store the replacement ${field} document.` });
+      }
+      documents[field] = uploadedValue;
+    }
+
+    const updated = await Application.findByIdAndUpdate(req.params.id, {
+      $set: { name, email, education, program, goals, documents },
+      $push: {
+        history: {
+          action: "Applicant details updated",
+          note: files.length ? "Applicant details and documents updated by admin" : "Applicant details updated by admin",
+          status: existing.status || "pending",
+          at: new Date(),
+        },
+      },
+    }, { new: true, runValidators: true });
+
+    return res.json(updated);
+  } catch (error) {
+    console.error("Applicant details update failed:", {
+      message: error?.message,
+      fileFields: Object.keys(req.files || {}),
+    });
+    return res.status(500).json({ error: "Unable to update applicant details." });
+  }
+});
 
 const deliverDocument = async (req, res, attachment) => {
   const { id, field } = req.params;

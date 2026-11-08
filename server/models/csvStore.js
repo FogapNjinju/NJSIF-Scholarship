@@ -243,6 +243,9 @@ const createCsvStore = ({ dataDir = defaultDataDir } = {}) => {
         next.status = updates.status;
         changes.push({ action: `Status changed to ${updates.status}`, status: updates.status, at: new Date().toISOString() });
       }
+      for (const field of ["name", "email", "education", "program", "goals", "documents"]) {
+        if (typeof updates[field] !== "undefined") next[field] = updates[field];
+      }
       if (typeof updates.score !== "undefined") next.score = updates.score;
       if (typeof updates.reviewed !== "undefined") next.reviewed = updates.reviewed;
       if (typeof updates.reviewNote !== "undefined") next.reviewNote = updates.reviewNote;

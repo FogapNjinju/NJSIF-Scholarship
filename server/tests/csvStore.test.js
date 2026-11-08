@@ -32,9 +32,13 @@ test("application records can be created, read, updated, and deleted using CSV",
   const updated = await store.updateApplication(created._id, {
     status: "accepted",
     reviewNote: "Strong academic profile",
+    name: "Ama Boateng Updated",
+    documents: { transcript: "https://res.cloudinary.com/example/document.pdf" },
   });
   assert.equal(updated.status, "accepted");
   assert.equal(updated.reviewNote, "Strong academic profile");
+  assert.equal(updated.name, "Ama Boateng Updated");
+  assert.equal(updated.documents.transcript, "https://res.cloudinary.com/example/document.pdf");
 
   await store.deleteApplication(created._id);
   assert.deepEqual(await store.listApplications(), []);
