@@ -350,6 +350,9 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [applicantDraft, setApplicantDraft] = useState({ name: "", email: "", education: "", program: "", goals: "" });
+  const [replacementFiles, setReplacementFiles] = useState({});
+  const [isSavingApplicant, setIsSavingApplicant] = useState(false);
   const [reviewedDraft, setReviewedDraft] = useState(false);
   const [reviewNoteDraft, setReviewNoteDraft] = useState("");
   const [decisionReasonDraft, setDecisionReasonDraft] = useState("");
@@ -480,10 +483,54 @@ export default function AdminDashboard() {
   const openDetails = (application) => {
     const normalized = normalizeApplication(application);
     setSelectedApplication(normalized);
+    setApplicantDraft({
+      name: normalized.name || "",
+      email: normalized.email || "",
+      education: normalized.education || "",
+      program: normalized.program || "",
+      goals: normalized.goals || "",
+    });
+    setReplacementFiles({});
     setReviewedDraft(normalized.reviewed || false);
     setReviewNoteDraft(stripArchiveMarker(normalized.reviewNote || ""));
     setDecisionReasonDraft(stripArchiveMarker(normalized.decisionReason || ""));
     setScoreDraft(getScoreValue(normalized.score));
+  };
+
+  const saveApplicantDetails = async () => {
+    if (!selectedApplication?._id) return;
+
+    setIsSavingApplicant(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      Object.entries(applicantDraft).forEach(([field, value]) => formData.append(field, value));
+      Object.entries(replacementFiles).forEach(([field, file]) => {
+        if (file) formData.append(field, file);
+      });
+
+      const response = await axios.put(
+        `/api/backend/applications/${encodeURIComponent(selectedApplication._id)}/details`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      const updated = normalizeApplication(response.data);
+      setSelectedApplication(updated);
+      setApplicantDraft({
+        name: updated.name || "",
+        email: updated.email || "",
+        education: updated.education || "",
+        program: updated.program || "",
+        goals: updated.goals || "",
+      });
+      setReplacementFiles({});
+      setMessage("Applicant details and selected documents were saved.");
+      await fetchDashboard();
+    } catch (err) {
+      setError(err?.response?.data?.error || err.message || "Unable to save applicant details.");
+    } finally {
+      setIsSavingApplicant(false);
+    }
   };
 
   const archiveApplication = async (id) => {
@@ -1222,7 +1269,7 @@ export default function AdminDashboard() {
 
       {selectedApplication && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-slate-950/40">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-900 p-6 shadow-2xl shadow-slate-950/40">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-sky-300">Application details</p>
@@ -1235,23 +1282,93 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-300">
-                <p><span className="text-slate-400">Education:</span> {selectedApplication.education || "—"}</p>
-                <p className="mt-2"><span className="text-slate-400">Program:</span> {selectedApplication.program || "—"}</p>
-                <p className="mt-2"><span className="text-slate-400">Status:</span> {selectedApplication.status || "pending"}</p>
-                <p className="mt-2"><span className="text-slate-400">Rank:</span> #{rankedApplications.find((item) => item._id === selectedApplication._id)?.rank || "—"}</p>
-                <p className="mt-2"><span className="text-slate-400">Score:</span> {getScoreValue(scoreDraft)}/100</p>
-                <p className="mt-2"><span className="text-slate-400">Reviewed:</span> {selectedApplication.reviewed ? "Yes" : "No"}</p>
-                <p className="mt-2"><span className="text-slate-400">Submitted:</span> {formatDateTime(selectedApplication.createdAt)}</p>
-                <p className="mt-2"><span className="text-slate-400">Last reviewed:</span> {selectedApplication.lastReviewedAt ? formatDateTime(selectedApplication.lastReviewedAt) : "Not yet reviewed"}</p>
-                {selectedApplication.archivedAt && <p className="mt-2"><span className="text-slate-400">Archived:</span> {formatDateTime(selectedApplication.archivedAt)}</p>}
+              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
+                <p className="mb-4 text-sm font-semibold text-white">Applicant details</p>
+                <div className="space-y-3">
+                  <label className="block text-sm text-slate-300">
+                    Full name
+                    <input
+                      value={applicantDraft.name}
+                      onChange={(e) => setApplicantDraft((current) => ({ ...current, name: e.target.value }))}
+                      className="field-control !mt-1 !py-2"
+                    />
+                  </label>
+                  <label className="block text-sm text-slate-300">
+                    Email
+                    <input
+                      type="email"
+                      value={applicantDraft.email}
+                      onChange={(e) => setApplicantDraft((current) => ({ ...current, email: e.target.value }))}
+                      className="field-control !mt-1 !py-2"
+                    />
+                  </label>
+                  <label className="block text-sm text-slate-300">
+                    Education
+                    <input
+                      value={applicantDraft.education}
+                      onChange={(e) => setApplicantDraft((current) => ({ ...current, education: e.target.value }))}
+                      className="field-control !mt-1 !py-2"
+                    />
+                  </label>
+                  <label className="block text-sm text-slate-300">
+                    Program
+                    <input
+                      value={applicantDraft.program}
+                      onChange={(e) => setApplicantDraft((current) => ({ ...current, program: e.target.value }))}
+                      className="field-control !mt-1 !py-2"
+                    />
+                  </label>
+                  <label className="block text-sm text-slate-300">
+                    Goals and motivation
+                    <textarea
+                      rows={5}
+                      value={applicantDraft.goals}
+                      onChange={(e) => setApplicantDraft((current) => ({ ...current, goals: e.target.value }))}
+                      className="field-control !mt-1"
+                    />
+                  </label>
+                </div>
+                <p className="mt-4 text-sm text-slate-300"><span className="text-slate-400">Status:</span> {selectedApplication.status || "pending"}</p>
+                <p className="mt-2 text-sm text-slate-300"><span className="text-slate-400">Rank:</span> #{rankedApplications.find((item) => item._id === selectedApplication._id)?.rank || "—"}</p>
+                <p className="mt-2 text-sm text-slate-300"><span className="text-slate-400">Score:</span> {getScoreValue(scoreDraft)}/100</p>
+                <p className="mt-2 text-sm text-slate-300"><span className="text-slate-400">Reviewed:</span> {selectedApplication.reviewed ? "Yes" : "No"}</p>
+                <p className="mt-2 text-sm text-slate-300"><span className="text-slate-400">Submitted:</span> {formatDateTime(selectedApplication.createdAt)}</p>
+                <p className="mt-2 text-sm text-slate-300"><span className="text-slate-400">Last reviewed:</span> {selectedApplication.lastReviewedAt ? formatDateTime(selectedApplication.lastReviewedAt) : "Not yet reviewed"}</p>
+                {selectedApplication.archivedAt && <p className="mt-2 text-sm text-slate-300"><span className="text-slate-400">Archived:</span> {formatDateTime(selectedApplication.archivedAt)}</p>}
               </div>
 
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
                 <p className="text-sm font-semibold text-white">Uploaded documents</p>
-                <p className="mt-2 text-xs text-slate-400">Admins can open each file in a new tab or download it directly.</p>
+                <p className="mt-2 text-xs text-slate-400">Choose a replacement only when you want to replace the current file.</p>
                 <DocumentActions applicationId={selectedApplication._id} documents={selectedApplication.documents} />
+                <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+                  {Object.entries(documentLabels).map(([field, label]) => (
+                    <label key={field} className="block text-sm text-slate-300">
+                      Replace {label}
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => setReplacementFiles((current) => ({
+                          ...current,
+                          [field]: e.target.files?.[0] || null,
+                        }))}
+                        className="field-control !mt-1 !py-2 text-xs"
+                      />
+                      {replacementFiles[field] && (
+                        <span className="mt-1 block text-xs text-emerald-200">Selected: {replacementFiles[field].name}</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  onClick={saveApplicantDetails}
+                  disabled={isSavingApplicant}
+                  className="btn-primary mt-4 w-full"
+                >
+                  {isSavingApplicant ? "Saving applicant..." : "Save applicant and documents"}
+                </button>
               </div>
+
             </div>
 
             <div className="mt-6 rounded-3xl border border-white/10 bg-slate-950/70 p-4">
