@@ -31,6 +31,20 @@ const statusOrder = {
   deleted: 4,
 };
 
+const reviewStageStyles = {
+  New: "border-sky-500/30 bg-sky-500/10 text-sky-200",
+  "In review": "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  "Decision made": "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  Archived: "border-slate-500/30 bg-slate-500/10 text-slate-300",
+};
+
+const getReviewStage = (application = {}) => {
+  if (application.status === "archived") return "Archived";
+  if (application.status === "accepted" || application.status === "rejected") return "Decision made";
+  if (application.reviewed) return "In review";
+  return "New";
+};
+
 const documentLabels = {
   gceOLevel: "GCE O/L",
   gceALevel: "GCE A/L",
@@ -253,6 +267,10 @@ const buildSummary = (applications = []) => {
   return {
     total: visibleApplications.length,
     pending: visibleApplications.filter((item) => item.status === "pending").length,
+    needsReview: visibleApplications.filter((item) => item.status === "pending" && !item.reviewed).length,
+    awaitingDocuments: visibleApplications.filter(
+      (item) => item.status === "pending" && getDocumentEntries(item.documents).length === 0
+    ).length,
     accepted: visibleApplications.filter((item) => item.status === "accepted").length,
     rejected: visibleApplications.filter((item) => item.status === "rejected").length,
     archived: visibleApplications.filter((item) => item.status === "archived").length,
@@ -408,17 +426,21 @@ export default function AdminDashboard() {
     const query = search.trim().toLowerCase();
     const filtered = visibleApplications.filter((application) => {
       const matchesFilter =
-        filter === "all"
+        filter === "all" || filter === "active"
           ? true
-          : filter === "active"
-            ? application.status !== "archived"
-            : application.status === filter;
+          : filter === "needs-review"
+            ? application.status === "pending" && !application.reviewed
+            : filter === "awaiting-documents"
+              ? application.status === "pending" && getDocumentEntries(application.documents).length === 0
+              : application.status === filter;
+
+      const matchesActiveFilter = filter !== "active" || application.status !== "archived";
 
       const matchesSearch = query
         ? `${application.name || ""} ${application.email || ""} ${application.program || ""}`.toLowerCase().includes(query)
         : true;
 
-      return matchesFilter && matchesSearch;
+      return matchesFilter && matchesActiveFilter && matchesSearch;
     });
 
     const sorted = [...filtered].sort((a, b) => {
@@ -814,25 +836,38 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section aria-label="Application review priorities" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Total applications", value: summary.total },
-            { label: "Pending", value: summary.pending },
-            { label: "Accepted", value: summary.accepted },
-            { label: "Archived", value: summary.archived },
-            { label: "Avg. score", value: `${summary.averageScore}/100` },
+            { label: "Needs review", value: summary.needsReview, filter: "needs-review", detail: "New or unreviewed submissions" },
+            { label: "Awaiting documents", value: summary.awaitingDocuments, filter: "awaiting-documents", detail: "Pending with no files uploaded" },
+            { label: "Accepted", value: summary.accepted, filter: "accepted", detail: "Decision made" },
+            { label: "Rejected", value: summary.rejected, filter: "rejected", detail: "Decision made" },
           ].map((card) => (
-            <div key={card.label} className="rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/20">
-              <p className="text-sm text-slate-400">{card.label}</p>
+            <button
+              key={card.label}
+              type="button"
+              aria-pressed={filter === card.filter}
+              onClick={() => setFilter(filter === card.filter ? "active" : card.filter)}
+              className={`min-h-28 rounded-2xl border p-4 text-left transition ${
+                filter === card.filter
+                  ? "border-sky-400/50 bg-sky-500/10"
+                  : "border-white/10 bg-slate-900/80 hover:border-white/20 hover:bg-slate-900"
+              }`}
+            >
+              <span className="block text-sm font-medium text-slate-300">{card.label}</span>
               {loading ? (
-                <div className="shimmer mt-3 h-9 w-20 rounded-xl bg-slate-800" />
+                <span className="shimmer mt-3 block h-8 w-16 rounded-lg bg-slate-800" />
               ) : (
-                <p className="mt-3 text-3xl font-semibold text-white">{card.value}</p>
+                <span className="mt-2 block text-3xl font-semibold text-white">{card.value}</span>
               )}
-            </div>
+              <span className="mt-1 block text-xs text-slate-400">{card.detail}</span>
+            </button>
           ))}
         </section>
 
+        <details className="rounded-2xl border border-white/10 bg-slate-900/50 px-4">
+          <summary className="cursor-pointer py-3 text-sm font-semibold text-slate-200">Analytics and trends</summary>
+          <div className="space-y-6 pb-5">
         <section className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-[2rem] border border-white/10 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/20">
             <h2 className="text-xl font-semibold text-white">Submissions over time</h2>
@@ -1017,8 +1052,10 @@ export default function AdminDashboard() {
             </div>
           </div>
         </section>
+          </div>
+        </details>
 
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <section className="grid gap-6">
           <div className="rounded-[2rem] border border-white/10 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/20">
             <div className="mb-5 flex flex-col gap-3">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1033,7 +1070,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div aria-label="Search, filters, sorting, and selection" className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <input
                   type="text"
                   value={search}
@@ -1049,6 +1086,8 @@ export default function AdminDashboard() {
                 >
                   <option value="active">Active only</option>
                   <option value="all">All statuses</option>
+                  <option value="needs-review">Needs review</option>
+                  <option value="awaiting-documents">Awaiting documents</option>
                   <option value="pending">Pending</option>
                   <option value="accepted">Accepted</option>
                   <option value="rejected">Rejected</option>
@@ -1140,6 +1179,9 @@ export default function AdminDashboard() {
                             <h3 className="text-lg font-semibold text-white">{application.name || "Unnamed applicant"}</h3>
                             <span className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusStyles[application.status] || statusStyles.pending}`}>
                               {application.status || "pending"}
+                            </span>
+                            <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${reviewStageStyles[getReviewStage(application)]}`}>
+                              {getReviewStage(application)}
                             </span>
                             <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200">
                               Rank #{application.rank || "—"}
